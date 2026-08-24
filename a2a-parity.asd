@@ -28,6 +28,7 @@
   :pathname "tests"
   :serial t
   :components ((:file "package")
+               (:file "catalog")
                (:file "lisp-client")
                (:file "foreign-client"))
   :perform (test-op (o c)

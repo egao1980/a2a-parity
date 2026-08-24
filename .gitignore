@@ -8,6 +8,7 @@
 *.log
 .DS_Store
 peers/node/node_modules/
+peers/node/package-lock.json
 peers/python/.venv/
 __pycache__/
 .ruff_cache/

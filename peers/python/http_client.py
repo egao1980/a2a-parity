@@ -8,17 +8,39 @@ import sys
 import httpx
 from a2a.client import A2ACardResolver, ClientConfig, create_client
 from a2a.helpers import new_text_message
-from a2a.types import Role, SendMessageRequest
+from a2a.types import Role, SendMessageRequest, TaskState
 
 
 def _part_text(part: object) -> str:
     text = getattr(part, "text", None)
     if text:
         return str(text)
+    content = getattr(part, "content", None)
+    if content is not None:
+        nested = getattr(content, "text", None) or getattr(content, "value", None)
+        if nested:
+            return str(nested)
+    which = getattr(part, "WhichOneof", None)
+    if callable(which):
+        field = which("content")
+        if field:
+            return str(getattr(part, field))
     root = getattr(part, "root", None)
     if root is not None:
         return str(getattr(root, "text", root))
-    return str(part)
+    return ""
+
+
+def _wire_state(state: object) -> str:
+    if state is None:
+        return ""
+    name = getattr(state, "name", None)
+    if isinstance(name, str) and name:
+        return name
+    try:
+        return TaskState.Name(int(state))
+    except (TypeError, ValueError):
+        return str(state)
 
 
 def _task_echo(chunk: object) -> tuple[str, str]:
@@ -30,10 +52,7 @@ def _task_echo(chunk: object) -> tuple[str, str]:
         if parts:
             text = _part_text(parts[0])
     status = getattr(task, "status", None)
-    state = getattr(status, "state", None)
-    if hasattr(state, "value"):
-        state = state.value
-    return text, str(state or "")
+    return text, _wire_state(getattr(status, "state", None))
 
 
 async def main() -> None:

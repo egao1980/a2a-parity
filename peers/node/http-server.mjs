@@ -1,7 +1,24 @@
 import express from "express";
-import { AGENT_CARD_PATH } from "@a2a-js/sdk";
-import { DefaultRequestHandler, InMemoryTaskStore } from "@a2a-js/sdk/server";
+import { AGENT_CARD_PATH, Role, TaskState } from "@a2a-js/sdk";
+import { AgentEvent, DefaultRequestHandler, InMemoryTaskStore } from "@a2a-js/sdk/server";
 import { agentCardHandler, jsonRpcHandler, UserBuilder } from "@a2a-js/sdk/server/express";
+import { randomUUID } from "node:crypto";
+
+function textPart(text) {
+  return {
+    content: { $case: "text", value: text },
+    mediaType: "text/plain",
+  };
+}
+
+function messageText(message) {
+  const parts = message?.parts ?? [];
+  for (const part of parts) {
+    if (typeof part?.text === "string" && part.text) return part.text;
+    if (part?.content?.$case === "text") return part.content.value ?? "";
+  }
+  return "";
+}
 
 class EchoExecutor {
   async cancelTask() {}
@@ -10,39 +27,52 @@ class EchoExecutor {
     const userMessage = requestContext.userMessage;
     const taskId = requestContext.taskId;
     const contextId = requestContext.contextId;
-    const text =
-      userMessage?.parts?.find((p) => p.text)?.text ??
-      userMessage?.parts?.find((p) => p.content?.$case === "text")?.content?.value ??
-      "";
+    const text = messageText(userMessage);
 
     const task = requestContext.task ?? {
       id: taskId,
       contextId,
-      status: { state: "TASK_STATE_SUBMITTED" },
+      status: { state: TaskState.TASK_STATE_SUBMITTED, timestamp: new Date().toISOString() },
       history: [userMessage],
       artifacts: [],
     };
-    eventBus.publish(task);
-    eventBus.publish({
-      taskId,
-      contextId,
-      status: { state: "TASK_STATE_WORKING" },
-    });
-    eventBus.publish({
-      taskId,
-      contextId,
-      artifact: {
-        artifactId: "echo",
-        name: "echo",
-        parts: [{ text }],
-      },
-      lastChunk: true,
-    });
-    eventBus.publish({
-      taskId,
-      contextId,
-      status: { state: "TASK_STATE_COMPLETED" },
-    });
+    eventBus.publish(AgentEvent.task(task));
+    eventBus.publish(
+      AgentEvent.statusUpdate({
+        taskId,
+        contextId,
+        status: { state: TaskState.TASK_STATE_WORKING, timestamp: new Date().toISOString() },
+      }),
+    );
+    eventBus.publish(
+      AgentEvent.artifactUpdate({
+        taskId,
+        contextId,
+        artifact: {
+          artifactId: "echo",
+          name: "echo",
+          parts: [textPart(text)],
+        },
+        lastChunk: true,
+      }),
+    );
+    eventBus.publish(
+      AgentEvent.statusUpdate({
+        taskId,
+        contextId,
+        status: {
+          state: TaskState.TASK_STATE_COMPLETED,
+          timestamp: new Date().toISOString(),
+          message: {
+            role: Role.ROLE_AGENT,
+            messageId: randomUUID(),
+            parts: [textPart("echoed")],
+            taskId,
+            contextId,
+          },
+        },
+      }),
+    );
     eventBus.finished?.();
   }
 }
@@ -58,9 +88,7 @@ const card = {
   name: "echo",
   description: "A2A parity echo agent",
   version: "0.1.0",
-  supportedInterfaces: [
-    { url, protocolBinding: "JSONRPC", protocolVersion: "1.0" },
-  ],
+  supportedInterfaces: [{ url, protocolBinding: "JSONRPC", protocolVersion: "1.0" }],
   capabilities: { streaming: true, pushNotifications: false },
   defaultInputModes: ["text/plain"],
   defaultOutputModes: ["text/plain"],

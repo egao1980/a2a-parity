@@ -13,6 +13,7 @@
            #:call-with-lisp-http-server
            #:with-peer-http-server
            #:catalog-ok-p
+           #:completed-state-p
            #:echo-text
            #:print-matrix
            #:http-server-command

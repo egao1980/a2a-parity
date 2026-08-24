@@ -24,13 +24,18 @@
          (part (first parts)))
     (and part (a2a-protocol:a2a-part-text part))))
 
+(defun completed-state-p (state)
+  "Accept Lisp keywords, ProtoJSON names, short names, and proto enum 3."
+  (or (eq state :completed)
+      (eql state 3)
+      (member (string-downcase (princ-to-string (or state "")))
+              '("task_state_completed" "completed" "3")
+              :test #'string=)))
+
 (defun catalog-ok-p (report)
   (let ((card (getf report :card))
         (echo (getf report :echo))
         (state (getf report :state)))
     (and (search "echo" (string-downcase (or card "")))
          (equal echo "pong")
-         (or (eq state :completed)
-             (equal state "TASK_STATE_COMPLETED")
-             (equal state "completed")
-             (equal state "COMPLETED")))))
+         (completed-state-p state))))
