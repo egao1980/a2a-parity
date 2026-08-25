@@ -14,6 +14,7 @@
                "uiop"
                "usocket"
                "rove")
+  :properties (:cl-repo (:ci (:with ("dissect") :sources (("dissect" :ql)))))
   :serial t
   :pathname "src"
   :components ((:file "package")
