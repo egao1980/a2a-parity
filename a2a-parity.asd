@@ -4,7 +4,7 @@
   :author "egao1980"
   :license "MIT"
   :depends-on ((:version "a2a-protocol" "0.2.0")
-               (:version "a2a-backend-jsonrpc" "0.2.0")
+               (:version "a2a-backend-jsonrpc" "0.2.1")
                "rpc-protocol" "rpc-protocol-json"
                "rpc-backend-inprocess"
                "http-protocol"
