@@ -1,0 +1,9 @@
+{
+  "name": "a2a-parity-node-peers",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@a2a-js/sdk": "^1.0.0",
+    "express": "^5.1.0"
+  }
+}
