@@ -3,9 +3,9 @@
   :description "Interop canary: a2a-protocol vs official Python/Node A2A SDKs"
   :author "egao1980"
   :license "MIT"
-  :depends-on ("a2a-protocol"
-               "a2a-backend-jsonrpc"
-               "rpc-protocol"
+  :depends-on ((:version "a2a-protocol" "0.2.0")
+               (:version "a2a-backend-jsonrpc" "0.2.0")
+               "rpc-protocol" "rpc-protocol-json"
                "rpc-backend-inprocess"
                "http-protocol"
                "http-backend-dexador"
