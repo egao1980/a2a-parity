@@ -2,9 +2,17 @@
 
 (defun %ensure-http-backend ()
   (or http-protocol:*http-backend*
-      (let ((eb (event-backend-libuv:make-libuv-backend)))
-        (setf http-backend-async:*event-backend-maker* (lambda () eb)
-              http-protocol:*http-backend* (http-backend-async:make-async-backend)))))
+      (setf http-protocol:*http-backend*
+            (or (handler-case
+                    (progn
+                      (asdf:load-system "event-backend-libuv")
+                      (let ((eb (funcall (find-symbol "MAKE-LIBUV-BACKEND"
+                                                      :event-backend-libuv))))
+                        (setf http-backend-async:*event-backend-maker*
+                              (lambda () eb))
+                        (http-backend-async:make-async-backend)))
+                  (error () nil))
+                (http-backend-dexador:make-dexador-backend)))))
 
 (defun %ensure-http-server ()
   (or http-server-protocol:*http-server-backend*

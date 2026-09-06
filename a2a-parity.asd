@@ -9,7 +9,7 @@
                "rpc-backend-inprocess"
                "http-protocol"
                "http-backend-async"
-               "event-backend-libuv"
+               "http-backend-dexador"
                "event-protocol"
                "http-server-protocol"
                "http-server-backend-hunchentoot"
