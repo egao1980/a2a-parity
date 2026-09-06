@@ -96,14 +96,15 @@
     (:python
      (python-cmd "http_server.py" (princ-to-string port)))))
 
-(defun http-client-command (kind url)
-  (ecase kind
-    (:node
-     (list (which "node")
-           (uiop:native-namestring (merge-pathnames "node/http-client.mjs" *peer-root*))
-           url))
-    (:python
-     (python-cmd "http_client.py" url))))
+(defun http-client-command (kind url &key stream)
+  (let ((args (if stream (list url "stream") (list url))))
+    (ecase kind
+      (:node
+       (list* (which "node")
+              (uiop:native-namestring (merge-pathnames "node/http-client.mjs" *peer-root*))
+              args))
+      (:python
+       (apply #'python-cmd "http_client.py" args)))))
 
 (defun start-peer-http-server (kind &key (port (%free-port)) (timeout 60))
   (let* ((cmd (http-server-command kind port))

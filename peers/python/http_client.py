@@ -51,27 +51,61 @@ def _task_echo(chunk: object) -> tuple[str, str]:
         parts = getattr(artifacts[0], "parts", None) or []
         if parts:
             text = _part_text(parts[0])
-    status = getattr(task, "status", None)
-    return text, _wire_state(getattr(status, "state", None))
+    artifact = getattr(chunk, "artifact", None)
+    if artifact is not None:
+        parts = getattr(artifact, "parts", None) or []
+        if parts:
+            text = text or _part_text(parts[0])
+    status = getattr(task, "status", None) or getattr(chunk, "status", None)
+    return text, _wire_state(getattr(status, "state", None) if status is not None else None)
+
+
+def _chunk_echo(chunk: object) -> tuple[str, str]:
+    """StreamResponse uses a payload oneof; empty .task is still truthy."""
+    which = getattr(chunk, "WhichOneof", None)
+    name = which("payload") if callable(which) else None
+    if name == "task":
+        return _task_echo(chunk.task)
+    if name == "artifact_update":
+        art = getattr(chunk.artifact_update, "artifact", None)
+        text = ""
+        if art is not None:
+            parts = getattr(art, "parts", None) or []
+            if parts:
+                text = _part_text(parts[0])
+        return text, ""
+    if name == "status_update":
+        status = getattr(chunk.status_update, "status", None)
+        return "", _wire_state(getattr(status, "state", None) if status is not None else None)
+    if name == "message":
+        parts = getattr(chunk.message, "parts", None) or []
+        text = _part_text(parts[0]) if parts else ""
+        return text, ""
+    return _task_echo(chunk)
 
 
 async def main() -> None:
     if len(sys.argv) < 2:
-        print("usage: http_client.py <url>", file=sys.stderr)
+        print("usage: http_client.py <url> [stream]", file=sys.stderr)
         raise SystemExit(2)
     base = sys.argv[1].rstrip("/")
+    streaming = len(sys.argv) > 2 and sys.argv[2] == "stream"
     async with httpx.AsyncClient() as http:
         resolver = A2ACardResolver(httpx_client=http, base_url=base)
         card = await resolver.get_agent_card()
-        client = await create_client(agent=card, client_config=ClientConfig(streaming=False))
+        client = await create_client(agent=card, client_config=ClientConfig(streaming=streaming))
         try:
             request = SendMessageRequest(message=new_text_message("pong", role=Role.ROLE_USER))
-            last = None
+            echo = ""
+            state = ""
             async for chunk in client.send_message(request):
-                last = chunk
+                text, st = _chunk_echo(chunk)
+                if text:
+                    echo = text
+                if st:
+                    state = st
         finally:
             await client.close()
-    echo, state = _task_echo(last)
     rec = {"card": card.name, "echo": echo, "state": state}
     print(json.dumps(rec, ensure_ascii=False), flush=True)
 
