@@ -80,8 +80,8 @@
                               (gethash "value" p))))))
             (when (%ht task)
               (let ((arts (gethash "artifacts" task)))
-                (when arts
-                  (let ((art (if (vectorp arts) (elt arts 0) (first arts))))
+                (when (and arts (plusp (length arts)))
+                  (let ((art (elt (if (vectorp arts) arts (coerce arts 'vector)) 0)))
                     (setf text (or (%artifact-echo art) text)))))
               (let ((st (%ht (gethash "status" task))))
                 (when st

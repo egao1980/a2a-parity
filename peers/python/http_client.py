@@ -60,6 +60,30 @@ def _task_echo(chunk: object) -> tuple[str, str]:
     return text, _wire_state(getattr(status, "state", None) if status is not None else None)
 
 
+def _chunk_echo(chunk: object) -> tuple[str, str]:
+    """StreamResponse uses a payload oneof; empty .task is still truthy."""
+    which = getattr(chunk, "WhichOneof", None)
+    name = which("payload") if callable(which) else None
+    if name == "task":
+        return _task_echo(chunk.task)
+    if name == "artifact_update":
+        art = getattr(chunk.artifact_update, "artifact", None)
+        text = ""
+        if art is not None:
+            parts = getattr(art, "parts", None) or []
+            if parts:
+                text = _part_text(parts[0])
+        return text, ""
+    if name == "status_update":
+        status = getattr(chunk.status_update, "status", None)
+        return "", _wire_state(getattr(status, "state", None) if status is not None else None)
+    if name == "message":
+        parts = getattr(chunk.message, "parts", None) or []
+        text = _part_text(parts[0]) if parts else ""
+        return text, ""
+    return _task_echo(chunk)
+
+
 async def main() -> None:
     if len(sys.argv) < 2:
         print("usage: http_client.py <url> [stream]", file=sys.stderr)
@@ -75,7 +99,7 @@ async def main() -> None:
             echo = ""
             state = ""
             async for chunk in client.send_message(request):
-                text, st = _task_echo(chunk)
+                text, st = _chunk_echo(chunk)
                 if text:
                     echo = text
                 if st:
