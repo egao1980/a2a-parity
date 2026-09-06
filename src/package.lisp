@@ -13,8 +13,14 @@
            #:call-with-lisp-http-server
            #:with-peer-http-server
            #:catalog-ok-p
+           #:stream-ok-p
+           #:stream-event-echo
            #:completed-state-p
            #:echo-text
+           #:lisp-inprocess-stream
+           #:lisp-http-lisp-server-stream
+           #:lisp-http-peer-server-stream
+           #:foreign-http-client-stream
            #:print-matrix
            #:http-server-command
            #:http-client-command))

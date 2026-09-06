@@ -2,7 +2,7 @@
 
 Status: `have` · `partial` · `missing` · `skip`
 
-Catalog: GET `/.well-known/agent-card.json` + `SendMessage` echo (`pong`).
+Catalog: GET `/.well-known/agent-card.json` + `SendMessage` / `SendStreamingMessage` echo (`pong`).
 
 ## JSON-RPC HTTP
 
@@ -10,6 +10,7 @@ Catalog: GET `/.well-known/agent-card.json` + `SendMessage` echo (`pong`).
 |-------|-----------|-----------|-------------|-----------|-------------|
 | agent card | have | have | have | have | have |
 | `SendMessage` echo | have | have | have | have | have |
+| `SendStreamingMessage` echo | have | have | have | have | have |
 
 Lisp→Lisp also has an in-process (no HTTP) route.
 
@@ -17,6 +18,5 @@ Lisp→Lisp also has an in-process (no HTTP) route.
 
 | Route | notes |
 |-------|-------|
-| `SendStreamingMessage` | wave-2 |
 | push-notification webhooks | wave-1 non-goal |
 | gRPC / HTTP+JSON REST | later backends |

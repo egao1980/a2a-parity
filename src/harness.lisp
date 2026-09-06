@@ -2,8 +2,9 @@
 
 (defun %ensure-http-backend ()
   (or http-protocol:*http-backend*
-      (setf http-protocol:*http-backend*
-            (http-backend-dexador:make-dexador-backend))))
+      (let ((eb (event-backend-libuv:make-libuv-backend)))
+        (setf http-backend-async:*event-backend-maker* (lambda () eb)
+              http-protocol:*http-backend* (http-backend-async:make-async-backend)))))
 
 (defun %ensure-http-server ()
   (or http-server-protocol:*http-server-backend*
@@ -50,6 +51,38 @@
   (with-peer-http-server (url kind)
     (lisp-talk url)))
 
+(defun %report-from-stream (card-name events)
+  (multiple-value-bind (echo state)
+      (stream-event-echo events)
+    (list :card card-name :echo echo :state state)))
+
+(defun lisp-stream-talk (url)
+  (%ensure-http-backend)
+  (let* ((backend (a2a-backend-jsonrpc:make-jsonrpc-a2a-backend :url url))
+         (card (a2a-protocol:fetch-agent-card backend url))
+         (result (a2a-protocol:stream-message
+                  backend (a2a-protocol:make-a2a-message :text "pong"))))
+    (%report-from-stream (a2a-protocol:agent-card-name card)
+                         (a2a-protocol:a2a-stream-events result))))
+
+(defun lisp-inprocess-stream ()
+  (let* ((agent (make-parity-agent))
+         (result (a2a-protocol:stream-message
+                  agent (a2a-protocol:make-a2a-message :text "pong"))))
+    (%report-from-stream
+     (a2a-protocol:agent-card-name (a2a-protocol:a2a-agent-card agent))
+     (a2a-protocol:a2a-stream-events result))))
+
+(defun lisp-http-lisp-server-stream ()
+  (call-with-lisp-http-server #'lisp-stream-talk))
+
+(defun lisp-http-peer-server-stream (kind)
+  (with-peer-http-server (url kind)
+    (lisp-stream-talk url)))
+
+(defun foreign-http-client-stream (kind url)
+  (foreign-http-client-talk kind url :stream t))
+
 (defun parse-json-line (line)
   (when (and line (plusp (length (string-trim '(#\space) line))))
     (ignore-errors (rpc-protocol:decode-message line))))
@@ -61,8 +94,8 @@
       ((stringp v) v)
       (t (princ-to-string v)))))
 
-(defun foreign-http-client-talk (kind url)
-  (let* ((cmd (http-client-command kind url)))
+(defun foreign-http-client-talk (kind url &key stream)
+  (let* ((cmd (http-client-command kind url :stream stream)))
     (multiple-value-bind (out err)
         (uiop:run-program cmd
                           :output :string

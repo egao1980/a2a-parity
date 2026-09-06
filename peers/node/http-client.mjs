@@ -50,8 +50,9 @@ function taskEcho(result) {
 }
 
 const url = process.argv[2];
+const stream = process.argv[3] === "stream";
 if (!url) {
-  console.error("usage: http-client.mjs <url>");
+  console.error("usage: http-client.mjs <url> [stream]");
   process.exit(2);
 }
 
@@ -60,14 +61,47 @@ const factory = new ClientFactory({
 });
 const client = await factory.createFromUrl(url);
 const card = (await client.getAgentCard?.()) ?? { name: "echo" };
-const result = await client.sendMessage({
-  message: {
-    messageId: randomUUID(),
-    role: Role.ROLE_USER,
-    parts: [{ content: { $case: "text", value: "pong" }, mediaType: "text/plain" }],
-  },
-});
-const { echo, state } = taskEcho(result);
+const message = {
+  messageId: randomUUID(),
+  role: Role.ROLE_USER,
+  parts: [{ content: { $case: "text", value: "pong" }, mediaType: "text/plain" }],
+};
+
+function streamEcho(events) {
+  let echo = "";
+  let state = "";
+  for (const ev of events) {
+    const payload = ev?.payload ?? ev;
+    const caseName = payload?.$case;
+    const value = payload?.value ?? payload;
+    const fromTask = taskEcho(caseName === "task" || ev?.task ? (value ?? ev.task ?? ev) : ev);
+    if (fromTask.echo) echo = fromTask.echo;
+    if (fromTask.state) state = fromTask.state;
+    const artifact = value?.artifact ?? ev?.artifactUpdate?.artifact ?? ev?.artifact;
+    if (artifact) {
+      for (const part of artifact.parts ?? []) {
+        const text = partText(part);
+        if (text) echo = text;
+      }
+    }
+    const st = value?.status?.state ?? ev?.statusUpdate?.status?.state;
+    if (st != null && st !== "") state = wireState(st);
+  }
+  return { echo, state };
+}
+
+let echo;
+let state;
+if (stream) {
+  const events = [];
+  for await (const ev of client.sendMessageStream({ message })) {
+    events.push(ev);
+  }
+  ({ echo, state } = streamEcho(events));
+} else {
+  const result = await client.sendMessage({ message });
+  ({ echo, state } = taskEcho(result));
+}
 process.stdout.write(`${JSON.stringify({ card: card.name ?? "echo", echo, state })}\n`);
 await client.close?.();
 process.exit(0);

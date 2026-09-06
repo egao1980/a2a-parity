@@ -5,6 +5,6 @@
   (format t "  peers: node=~a python=~a~%"
           (if (node-available-p) "yes" "no")
           (if (python-available-p) "yes" "no"))
-  (format t "  catalog: GET agent-card + SendMessage echo~%")
+  (format t "  catalog: GET agent-card + SendMessage / SendStreamingMessage echo~%")
   (format t "  routes: Lisp↔Lisp (in-process + HTTP), Lisp↔Node, Lisp↔Python~%")
   (values))

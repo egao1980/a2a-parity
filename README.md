@@ -13,7 +13,7 @@ JSON-RPC HTTP
   Python client → Lisp server   (A2ACardResolver + create_client)
 ```
 
-A pass is GET `/.well-known/agent-card.json` plus `SendMessage` echo (`pong` → completed artifact).
+A pass is GET `/.well-known/agent-card.json` plus `SendMessage` / `SendStreamingMessage` echo (`pong` → completed artifact).
 
 ## Run
 
